@@ -5,6 +5,10 @@
 
 #pragma once
 
+#define SPDLOG_VERSION "0.16.3"
+
+#include "tweakme.h"
+
 #include <string>
 #include <initializer_list>
 #include <chrono>
@@ -51,9 +55,6 @@ namespace spdlog
 
 class formatter;
 
-template<class T, size_t N>
-constexpr size_t size(T(&)[N]) { return N; }
-
 namespace sinks
 {
 class sink;
@@ -74,7 +75,7 @@ using log_err_handler = std::function<void(const std::string &err_msg)>;
 //Log level enum
 namespace level
 {
-typedef enum
+enum level_enum
 {
     trace = 0,
     debug = 1,
@@ -83,10 +84,10 @@ typedef enum
     err = 4,
     critical = 5,
     off = 6
-} level_enum;
+};
 
 #if !defined(SPDLOG_LEVEL_NAMES)
-#define SPDLOG_LEVEL_NAMES { "trace", "debug", "info",  "warning", "error", "critical", "off" }
+#define SPDLOG_LEVEL_NAMES { "trace", "debug", "info", "warning", "error", "critical", "off" }
 #endif
 static const char* level_names[] SPDLOG_LEVEL_NAMES;
 
@@ -101,20 +102,9 @@ inline const char* to_short_str(spdlog::level::level_enum l)
 {
     return short_level_names[l];
 }
-inline spdlog::level::level_enum to_level_enum(const char* name)
-{
-	for (size_t level = 0; level < size(level_names); level++)
-	{
-		if (!strcmp(level_names[level], name))
-		{
-			return (spdlog::level::level_enum) level;
-		}
-	}
-	return (spdlog::level::level_enum) 0;
-}
+using level_hasher = std::hash<int>;
 
 } //level
-
 
 //
 // Async overflow policy - block by default.
@@ -145,22 +135,24 @@ namespace os
 std::string errno_str(int err_num);
 }
 }
-class spdlog_ex: public std::exception
+class spdlog_ex : public std::exception
 {
 public:
-    spdlog_ex(const std::string& msg):_msg(msg)
+    explicit spdlog_ex(std::string msg) : _msg(std::move(msg))
     {}
+
     spdlog_ex(const std::string& msg, int last_errno)
     {
         _msg = msg + ": " + details::os::errno_str(last_errno);
     }
+
     const char* what() const SPDLOG_NOEXCEPT override
     {
         return _msg.c_str();
     }
+
 private:
     std::string _msg;
-
 };
 
 //
@@ -171,6 +163,5 @@ using filename_t = std::wstring;
 #else
 using filename_t = std::string;
 #endif
-
 
 } //spdlog
